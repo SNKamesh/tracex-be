@@ -36,7 +36,7 @@ app.get("/health", (req, res) => {
   res.json({ status: "healthy" });
 });
 
-// Core Feature: PDF Compression API (Strict Local Storage)
+// ── Feature 1: PDF Compression API (Strict Local Storage) ─────────────────────
 app.post("/compress", upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No PDF file uploaded" });
@@ -92,6 +92,46 @@ app.post("/compress", upload.single("file"), async (req, res) => {
     res.status(500).json({ error: "Server error executing document compression process" });
   } finally {
     // Clean up original upload cache file promptly to save disk limits
+    if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+  }
+});
+
+// ── Feature 2: Image Conversion API (Sharp Optimization Engine) ───────────────
+app.post("/convert-image", upload.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No image file uploaded" });
+  }
+
+  const targetFormat = req.body.format || "jpeg"; 
+  const inputPath = req.file.path;
+  
+  const baseName = req.file.originalname.replace(/\.[^/.]+$/, "");
+  const outputFilename = `converted_${Date.now()}_${baseName}.${targetFormat}`;
+  const outputPath = path.join(outputDir, outputFilename);
+
+  try {
+    const { default: sharp } = await import("sharp");
+
+    // Process re-encoding inside server memory efficiently
+    await sharp(inputPath)
+      .toFormat(targetFormat, { quality: 90 })
+      .toFile(outputPath);
+
+    // Dynamically build file mapping link pointing back to your Render domain
+    const protocol = req.headers["x-forwarded-proto"] || "http";
+    const host = req.get("host");
+    const downloadUrl = `${protocol}://${host}/downloads/${outputFilename}`;
+
+    res.json({
+      success: true,
+      url: downloadUrl,
+      filename: `${baseName}.${targetFormat}`,
+    });
+  } catch (error) {
+    console.error("Image conversion failed:", error);
+    res.status(500).json({ error: "Our transformation engines couldn't process this image layout." });
+  } finally {
+    // Purge original file upload cache instantly
     if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
   }
 });
