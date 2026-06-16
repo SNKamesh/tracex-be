@@ -9,10 +9,10 @@ export async function generateGroqResponse(prompt, history = []) {
         const messages = [...history, { role: 'user', content: prompt }];
         
         const chatCompletion = await groq.chat.completions.create({
-            messages: messages,
-            model: 'llama3-8b-8192', // Default Groq model
-            temperature: 0.7,
-        });
+          messages: messages,
+          model: 'llama-3.1-8b-instant', // <--- CHANGED THIS LINE
+          temperature: 0.7,
+      });
 
         return chatCompletion.choices[0]?.message?.content || '';
     } catch (error) {
