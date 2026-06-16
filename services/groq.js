@@ -10,7 +10,7 @@ export async function generateGroqResponse(prompt, history = []) {
         
         const chatCompletion = await groq.chat.completions.create({
           messages: messages,
-          model: 'llama-3.1-8b-instant', // <--- CHANGED THIS LINE
+          model: 'llama-3.1-8b-instant',
           temperature: 0.7,
       });
 
