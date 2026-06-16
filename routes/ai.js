@@ -48,4 +48,4 @@ router.post('/notex/process', aiRateLimiter, async (req, res, next) => {
     }
 });
 
-module.exports = router;
+export default router;
