@@ -1,4 +1,4 @@
-import { sendMessage, ClaudeServiceError } from "./claude.js";
+import { sendMessage, GroqServiceError } from "./groq.js";
 
 export const NOTEX_MODES = Object.freeze([
   "summarize",
@@ -135,7 +135,7 @@ function buildUserPrompt(instruction, message, context) {
 
 function validateMode(mode) {
   if (!NOTEX_MODES.includes(mode)) {
-    throw new ClaudeServiceError(`Invalid mode. Allowed: ${NOTEX_MODES.join(", ")}`, {
+    throw new GroqServiceError(`Invalid mode. Allowed: ${NOTEX_MODES.join(", ")}`, {
       statusCode: 400,
       code: "INVALID_MODE",
     });
@@ -162,4 +162,4 @@ export async function processNoteXRequest({ message, context = "", mode }) {
   };
 }
 
-export { ClaudeServiceError };
+export { GroqServiceError };
