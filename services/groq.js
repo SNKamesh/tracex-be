@@ -1,5 +1,5 @@
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const DEFAULT_MODEL = "mixtral-8x7b-32768"; // Free on Groq
+const DEFAULT_MODEL = "mixtral-8x7b-32768";
 const DEFAULT_TIMEOUT_MS = 60_000;
 const DEFAULT_MAX_TOKENS = 4096;
 

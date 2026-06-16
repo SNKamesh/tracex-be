@@ -1,25 +1,51 @@
-import { Router } from "express";
-import { processNoteXRequest } from "../services/notexProcessor.js";
-import { validateChatRequest } from "../middleware/validateAi.js";
-import { aiRateLimiter } from "../middleware/rateLimit.js";
-import { aiErrorHandler } from "../middleware/aiErrorHandler.js";
+// tracex-be/routes/ai.js
+const express = require('express');
+const router = express.Router();
+const { generateGroqResponse } = require('../services/groq');
+const { processWithGroq } = require('../services/notexProcessor'); 
+const { validateAiRequest } = require('../middleware/validateAi');
+const { aiRateLimiter } = require('../middleware/rateLimit');
 
-const router = Router();
-
-router.post("/chat", aiRateLimiter, validateChatRequest, async (req, res, next) => {
-  try {
-    const { message, context, mode } = req.validatedChat;
-    const { answer } = await processNoteXRequest({ message, context, mode });
-
-    res.json({
-      success: true,
-      answer,
-    });
-  } catch (error) {
-    next(error);
-  }
+// Main chat route - updated to use Groq exclusively
+router.post('/chat', aiRateLimiter, validateAiRequest, async (req, res, next) => {
+    try {
+        const { prompt, history } = req.body;
+        
+        // Call your Groq service directly
+        const responseText = await generateGroqResponse(prompt, history);
+        
+        return res.status(200).json({
+            success: true,
+            provider: 'groq',
+            data: responseText
+        });
+    } catch (error) {
+        next(error);
+    }
 });
 
-router.use(aiErrorHandler);
+// NoteX Bot route - processes text structures exclusively via Groq
+router.post('/notex/process', aiRateLimiter, async (req, res, next) => {
+    try {
+        const { documentText, formatType } = req.body;
+        
+        if (!documentText) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'No document text provided.' 
+            });
+        }
 
-export default router;
+        // Send text directly to the Groq processor
+        const structuredNotes = await processWithGroq(documentText, formatType);
+        
+        return res.status(200).json({
+            success: true,
+            data: structuredNotes
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+module.exports = router;
