@@ -5,28 +5,14 @@ import { errorHandler } from './middleware/aiErrorHandler.js';
 
 const app = express();
 
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://tracex-gdbl.vercel.app' // Allows your frontend to talk to this backend
-];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Blocked by CORS policy'));
-    }
-  },
-  credentials: true
-}));
-
+// FORCE OPEN CORS: Allows Vercel, localhost, and everything else to connect without being blocked
+app.use(cors());
 app.use(express.json());
 
 app.use('/api/ai', aiRoutes);
 
 app.get('/', (req, res) => {
-  res.status(200).send('Tracex Backend Running on Groq Engine (ESM)');
+  res.status(200).send('Tracex Backend is ALIVE and OPEN');
 });
 
 app.use(errorHandler);
