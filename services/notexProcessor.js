@@ -2,8 +2,6 @@ import { generateGroqResponse } from './groq.js';
 
 /**
  * Processes document text using Groq to format into clean study guides/notes
- * @param {string} documentText 
- * @param {string} formatType (e.g., 'Summarize', 'Explain', 'Improve')
  */
 export async function processWithGroq(documentText, formatType) {
     let systemPrompt = `You are NoteX AI, a premium study and writing workspace assistant. `;
@@ -17,6 +15,9 @@ export async function processWithGroq(documentText, formatType) {
     } else {
         systemPrompt += `Format, process, or answer questions regarding this text based on instructions: ${formatType}`;
     }
+
+    // THE FIX: Strict instructions to stop it from echoing the prompt markers
+    systemPrompt += "\n\nCRITICAL INSTRUCTION: Output ONLY the final processed text. Do not introduce yourself, do not include conversational filler, and absolutely do NOT include the '--- DOCUMENT START ---' or '--- DOCUMENT END ---' markers in your final output.";
 
     const fullPrompt = `${systemPrompt}\n\n--- DOCUMENT START ---\n${documentText}\n--- DOCUMENT END ---`;
     
