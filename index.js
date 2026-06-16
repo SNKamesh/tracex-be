@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
@@ -6,13 +9,24 @@ import { execFile } from "child_process";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
+import aiRouter from "./routes/ai.js";
 
 const execFileAsync = promisify(execFile);
 
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()) || true,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.use(cors(corsOptions));
 app.use(morgan("dev"));
+
+// AI routes need a larger JSON payload limit for note context
+app.use("/api/ai", express.json({ limit: "512kb" }), aiRouter);
+
+app.use(express.json({ limit: "100kb" }));
 
 // Using absolute workspace paths to ensure flawless Docker file system execution
 const __dirname = path.resolve();
@@ -151,6 +165,16 @@ setInterval(() => {
     });
   });
 }, 15 * 1000 * 60);
+
+app.use((err, req, res, next) => {
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({
+      success: false,
+      error: "Request body exceeds the allowed size limit.",
+    });
+  }
+  next(err);
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
