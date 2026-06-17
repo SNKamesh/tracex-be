@@ -1,12 +1,103 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit from "express-rate-limit";
+
+
+
+
+// GLOBAL API LIMITER
+
+const limiter = rateLimit({
+
+  windowMs:
+
+    15 * 60 * 1000,
+
+
+  limit:
+
+    200,
+
+
+  standardHeaders:
+
+    true,
+
+
+  legacyHeaders:
+
+    false,
+
+
+  message: {
+
+    success:false,
+
+    error:
+
+      "Too many requests. Please slow down.",
+
+  },
+
+});
+
+
+
+
+
+
+
+
+
+// AI SPECIFIC LIMITER
 
 export const aiRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 50, // Limit each IP to 50 requests per window
-    message: {
-        success: false,
-        error: 'Too many requests from this IP, please try again after 15 minutes.'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
+
+
+  windowMs:
+
+    60 * 1000,
+
+
+
+  limit:
+
+    20,
+
+
+
+  standardHeaders:
+
+    true,
+
+
+
+  legacyHeaders:
+
+    false,
+
+
+
+  message: {
+
+
+    success:false,
+
+
+    error:
+
+      "AI request limit reached. Try again soon.",
+
+
+  },
+
+
 });
+
+
+
+
+
+
+
+
+
+export default limiter;

@@ -1,11 +1,27 @@
-export const errorHandler = (err, req, res, next) => {
-  console.error('AI Service Error:', err);
-  
-  const statusCode = err.status || 500;
-  const message = err.message || 'Internal Server Error processing AI request';
+export default function aiErrorHandler(
+  err,
+  req,
+  res,
+  next
+) {
 
-  res.status(statusCode).json({
-      success: false,
-      error: message
+  console.error(
+    "TraceX Backend Error:",
+    err
+  );
+
+
+
+  res.status(
+    err.status || 500
+  ).json({
+
+    success:false,
+
+    error:
+      err.message ||
+      "Internal server error",
+
   });
-};
+
+}
