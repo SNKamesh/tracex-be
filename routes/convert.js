@@ -11,36 +11,47 @@ const router = express.Router()
 const run = promisify(execFile)
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024, files: 10 } })
 
-const officeFormats = new Set(["doc", "docx", "docm", "odt", "rtf", "txt", "html", "htm", "md", "epub", "mobi", "azw3", "xls", "xlsx", "xlsm", "ods", "csv", "tsv", "ppt", "pptx", "pptm", "odp", "ppsx"])
-const writerFormats = new Set(["doc", "docx", "docm", "odt", "rtf", "txt", "html", "htm", "md", "epub"])
-const calcFormats = new Set(["xls", "xlsx", "xlsm", "ods", "csv", "tsv"])
-const impressFormats = new Set(["ppt", "pptx", "pptm", "odp", "ppsx"])
-const imageFormats = new Set(["jpg", "jpeg", "png", "webp", "avif", "tif", "tiff", "bmp", "gif", "heic", "heif"])
-const audioFormats = new Set(["mp3", "wav", "flac", "aac", "m4a", "ogg", "opus", "wma", "aiff", "amr"])
-const videoFormats = new Set(["mp4", "mov", "mkv", "avi", "webm", "mpeg", "mpg", "flv", "ogv", "wmv", "3gp"])
+const officeFormats = new Set(["docx", "txt", "html", "xlsx", "csv", "tsv", "pptx"])
+const writerFormats = new Set(["docx", "txt", "html"])
+const calcFormats = new Set(["xlsx", "csv", "tsv"])
+const impressFormats = new Set(["pptx"])
+const imageFormats = new Set(["jpg", "jpeg", "png", "webp", "avif"])
+const audioFormats = new Set(["mp3", "wav", "flac", "aac", "m4a"])
+const videoFormats = new Set(["mp4", "mov", "mkv", "webm"])
+
+const conversionTargets = new Map([
+  ["pdf", new Set(["docx", "txt", "html", "png", "jpg"])],
+  ["docx", new Set(["pdf", "txt", "html"])],
+  ["txt", new Set(["pdf", "docx", "html"])],
+  ["html", new Set(["pdf", "docx", "txt"])],
+  ["pptx", new Set(["pdf"])],
+  ["xlsx", new Set(["pdf", "csv", "tsv"])],
+  ["csv", new Set(["pdf", "xlsx", "tsv"])],
+  ["tsv", new Set(["pdf", "xlsx", "csv"])],
+  ["jpg", new Set(["png", "webp", "avif"])],
+  ["jpeg", new Set(["png", "webp", "avif"])],
+  ["png", new Set(["jpg", "webp", "avif"])],
+  ["webp", new Set(["jpg", "png", "avif"])],
+  ["avif", new Set(["jpg", "png", "webp"])],
+  ["mp3", new Set(["wav", "m4a", "flac", "aac"])],
+  ["wav", new Set(["mp3", "m4a", "flac", "aac"])],
+  ["m4a", new Set(["mp3", "wav", "flac", "aac"])],
+  ["flac", new Set(["mp3", "wav", "m4a", "aac"])],
+  ["aac", new Set(["mp3", "wav", "m4a", "flac"])],
+  ["mp4", new Set(["mov", "mkv", "webm", "mp3", "wav", "m4a", "flac", "aac"])],
+  ["mov", new Set(["mp4", "mkv", "webm", "mp3", "wav", "m4a", "flac", "aac"])],
+  ["mkv", new Set(["mp4", "mov", "webm", "mp3", "wav", "m4a", "flac", "aac"])],
+  ["webm", new Set(["mp4", "mov", "mkv", "mp3", "wav", "m4a", "flac", "aac"])],
+])
 
 const officeTargets = new Map([
-  ["doc", "doc"],
   ["docx", "docx"],
-  ["docm", "docm:MS Word 2007 XML VBA"],
-  ["odt", "odt"],
-  ["rtf", "rtf"],
   ["txt", "txt:Text"],
   ["html", "html:XHTML Writer File"],
-  ["htm", "html:XHTML Writer File"],
-  ["md", "txt:Text"],
-  ["epub", "epub"],
-  ["xls", "xls"],
   ["xlsx", "xlsx"],
-  ["xlsm", "xlsm:Calc MS Excel 2007 VBA XML"],
-  ["ods", "ods"],
   ["csv", "csv:Text - txt - csv (StarCalc)"],
   ["tsv", "csv:Text - txt - csv (StarCalc)"],
-  ["ppt", "ppt"],
   ["pptx", "pptx"],
-  ["pptm", "pptm:Impress MS PowerPoint 2007 XML VBA"],
-  ["odp", "odp"],
-  ["ppsx", "pptx"],
   ["pdf", "pdf:writer_pdf_Export"],
 ])
 
@@ -56,34 +67,22 @@ function mimeFor(format) {
   const map = {
     pdf: "application/pdf",
     txt: "text/plain",
-    md: "text/markdown",
     html: "text/html",
-    htm: "text/html",
     csv: "text/csv",
     tsv: "text/tab-separated-values",
-    doc: "application/msword",
     docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    docm: "application/vnd.ms-word.document.macroEnabled.12",
-    odt: "application/vnd.oasis.opendocument.text",
-    rtf: "application/rtf",
-    xls: "application/vnd.ms-excel",
     xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    xlsm: "application/vnd.ms-excel.sheet.macroEnabled.12",
-    ods: "application/vnd.oasis.opendocument.spreadsheet",
-    ppt: "application/vnd.ms-powerpoint",
     pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    pptm: "application/vnd.ms-powerpoint.presentation.macroEnabled.12",
-    odp: "application/vnd.oasis.opendocument.presentation",
-    epub: "application/epub+zip",
     jpg: "image/jpeg",
     jpeg: "image/jpeg",
     png: "image/png",
     webp: "image/webp",
     avif: "image/avif",
-    gif: "image/gif",
     mp3: "audio/mpeg",
     wav: "audio/wav",
     flac: "audio/flac",
+    aac: "audio/aac",
+    m4a: "audio/mp4",
     mp4: "video/mp4",
     mov: "video/quicktime",
     mkv: "video/x-matroska",
@@ -91,6 +90,10 @@ function mimeFor(format) {
     zip: "application/zip",
   }
   return map[format] || "application/octet-stream"
+}
+
+function supportedConversion(from, to) {
+  return conversionTargets.get(from)?.has(to) || false
 }
 
 async function convertWithSoffice(input, outDir, to, sourceFormat) {
@@ -113,7 +116,8 @@ async function convertOne(file, from, to, workDir) {
   await fs.writeFile(input, file.buffer)
   const base = path.basename(inputName, path.extname(inputName))
 
-  if (from === to) return { path: input, name: `${base}.${to}`, format: to }
+  if (from === to) throw new Error(`${from.toUpperCase()} → ${to.toUpperCase()} is not a conversion.`)
+  if (!supportedConversion(from, to)) throw new Error(`${from.toUpperCase()} → ${to.toUpperCase()} is not a supported TraceX conversion.`)
 
   if (imageFormats.has(from) && imageFormats.has(to)) {
     const output = path.join(workDir, `${base}.${to}`)
@@ -122,8 +126,7 @@ async function convertOne(file, from, to, workDir) {
     else if (to === "png") pipeline = pipeline.png()
     else if (to === "webp") pipeline = pipeline.webp({ quality: 92 })
     else if (to === "avif") pipeline = pipeline.avif({ quality: 85 })
-    else if (["tif", "tiff"].includes(to)) pipeline = pipeline.tiff({ compression: "lzw" })
-    else throw new Error(`${from.toUpperCase()} → ${to.toUpperCase()} is not available yet in the image engine.`)
+    else throw new Error(`${from.toUpperCase()} → ${to.toUpperCase()} is not available in the image engine.`)
     await pipeline.toFile(output)
     return { path: output, name: `${base}.${to}`, format: to }
   }
@@ -134,10 +137,9 @@ async function convertOne(file, from, to, workDir) {
     return { path: output, name: `${base}.txt`, format: "txt" }
   }
 
-  if (from === "pdf" && ["png", "jpg", "jpeg"].includes(to)) {
+  if (from === "pdf" && ["png", "jpg"].includes(to)) {
     const prefix = path.join(workDir, `${base}-page`)
-    const args = ["-png", "-r", "150", input, prefix]
-    if (["jpg", "jpeg"].includes(to)) args[0] = "-jpeg"
+    const args = [to === "jpg" ? "-jpeg" : "-png", "-r", "150", input, prefix]
     await run("pdftoppm", args)
     const files = (await fs.readdir(workDir)).filter((name) => name.startsWith(`${base}-page-`)).sort()
     if (files.length === 1) return { path: path.join(workDir, files[0]), name: `${base}.${to}`, format: to }
@@ -150,11 +152,7 @@ async function convertOne(file, from, to, workDir) {
     return convertWithSoffice(txt, workDir, to, from)
   }
 
-  if (from === "pdf" && (calcFormats.has(to) || impressFormats.has(to))) {
-    const txt = path.join(workDir, `${base}.txt`)
-    await run("pdftotext", ["-layout", input, txt])
-    return convertWithSoffice(txt, workDir, to, from)
-  }
+  if (from === "office-placeholder") return null
 
   if (officeFormats.has(from) && to === "pdf") return convertWithSoffice(input, workDir, "pdf", from)
 
@@ -172,7 +170,7 @@ async function convertOne(file, from, to, workDir) {
     return { path: output, name: `${base}.${to}`, format: to }
   }
 
-  throw new Error(`${from.toUpperCase()} → ${to.toUpperCase()} is not supported by the current TraceX engine.`)
+  throw new Error(`${from.toUpperCase()} → ${to.toUpperCase()} is not available in the current TraceX engine.`)
 }
 
 async function zipFiles(files, target) {
@@ -188,6 +186,7 @@ router.post("/", upload.array("files", 10), async (req, res) => {
 
   if (!from || !to) return res.status(400).json({ error: "Missing source or destination format." })
   if (!files.length) return res.status(400).json({ error: "No files were uploaded." })
+  if (!supportedConversion(from, to)) return res.status(422).json({ error: `${from.toUpperCase()} → ${to.toUpperCase()} is not a supported TraceX conversion.` })
 
   const workDir = await fs.mkdtemp(path.join(os.tmpdir(), "tracex-convert-"))
 
@@ -195,7 +194,7 @@ router.post("/", upload.array("files", 10), async (req, res) => {
     const results = []
     for (const file of files) {
       const detected = ext(file.originalname)
-      if (detected !== from && !(from === "jpg" && detected === "jpeg") && !(from === "tif" && detected === "tiff")) {
+      if (detected !== from && !(from === "jpg" && detected === "jpeg")) {
         throw new Error(`${file.originalname} does not match the selected input format ${from.toUpperCase()}.`)
       }
       results.push(await convertOne(file, from, to, workDir))
